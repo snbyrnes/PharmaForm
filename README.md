@@ -1,6 +1,6 @@
 # HPRA XML Parser
 
-Convert HPRA human medicines XML exports into clean JSON, ready for analysis.
+Convert publicy available HPRA human medicines XML exports into clean JSON, ready for analysis.
 
 ## Features
 - **Namespace-free JSON**: Removes XML namespaces while preserving attributes and text content.
@@ -105,3 +105,9 @@ hpra-xml-parser/
 │  └─ output/             # JSON output appears here
 └─ README.md
 ```
+
+## Notes
+
+1. This tool is not associated with, or validated by the HPRA.
+2. Please contribute by using the issues function to report bugs and suggest enhancements.
+   
