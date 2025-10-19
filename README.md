@@ -1,8 +1,8 @@
-# HPRA XML Parser# HPRA XML Parser
+# HPRA XML Parser HPRA XML Parser
 
 
 
-Convert HPRA human medicines XML exports into clean JSON for analysis and reporting.Convert publicy available HPRA human medicines XML exports into clean JSON, ready for analysis.
+Convert HPRA human medicines XML public exports into clean JSON for analysis and reporting.
 
 
 
