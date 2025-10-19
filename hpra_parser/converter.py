@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 from xml.etree import ElementTree as ET
+
+
+@dataclass
+class ConversionResult:
+    """Result of converting an XML file to JSON."""
+    success: bool
+    records_processed: int = 0
+    warning_message: Optional[str] = None
+    error_message: Optional[str] = None
 
 
 def strip_namespace(tag: str) -> str:
@@ -119,9 +129,52 @@ def parse_xml(xml_path: Path) -> Dict[str, Any]:
     return {strip_namespace(root.tag): etree_to_dict(root)}
 
 
-def convert_xml_to_json(input_path: Path, output_path: Path, flatten: bool = False) -> None:
-    """Convert a HPRA XML file to JSON, optionally flattening the structure."""
-    data = parse_xml(input_path)
-    if flatten:
-        data = flatten_data(data)
-    output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+def convert_xml_to_json(input_path: Path, output_path: Path, flatten: bool = False) -> ConversionResult:
+    """Convert a HPRA XML file to JSON, optionally flattening the structure.
+    
+    Returns:
+        ConversionResult with success status, record count, and any warnings/errors.
+    """
+    try:
+        data = parse_xml(input_path)
+        records_count = 0
+        warning = None
+        
+        if flatten:
+            flattened_data = flatten_data(data)
+            if isinstance(flattened_data, list):
+                records_count = len(flattened_data)
+            else:
+                records_count = 1
+            data = flattened_data
+        else:
+            # Count records in nested structure
+            products_section = data.get("Products", {})
+            if isinstance(products_section, dict):
+                products = products_section.get("Product", [])
+                if isinstance(products, list):
+                    records_count = len(products)
+                elif products is not None:
+                    records_count = 1
+        
+        output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        
+        # Add warning if no records found
+        if records_count == 0:
+            warning = "No products found in XML file"
+        
+        return ConversionResult(
+            success=True,
+            records_processed=records_count,
+            warning_message=warning
+        )
+    except ET.ParseError as e:
+        return ConversionResult(
+            success=False,
+            error_message=f"XML parse error: {str(e)}"
+        )
+    except Exception as e:
+        return ConversionResult(
+            success=False,
+            error_message=f"Unexpected error: {str(e)}"
+        )

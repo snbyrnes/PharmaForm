@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
 
 from .converter import convert_xml_to_json
+from .quality_report import (
+    BatchMetrics,
+    ProcessingResult,
+    generate_excel_report,
+    generate_text_report,
+    OPENPYXL_AVAILABLE,
+)
 
 
 def get_runtime_root() -> Path:
@@ -48,6 +56,17 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         help="Override the output directory for JSON files.",
     )
     parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="Disable generation of quality summary report.",
+    )
+    parser.add_argument(
+        "--report-format",
+        choices=["excel", "text", "both"],
+        default="excel",
+        help="Format for quality summary report (default: excel).",
+    )
+    parser.add_argument(
         "files",
         nargs="*",
         type=Path,
@@ -71,6 +90,34 @@ def resolve_targets(input_dir: Path, selected_files: List[Path]) -> List[Path]:
     return sorted(input_dir.glob("*.xml"))
 
 
+def generate_quality_report(metrics: BatchMetrics, output_dir: Path, report_format: str) -> None:
+    """Generate quality summary report in the requested format(s)."""
+    timestamp = metrics.start_time.strftime("%Y%m%d_%H%M%S")
+    
+    if report_format in ("excel", "both"):
+        if OPENPYXL_AVAILABLE:
+            excel_path = output_dir / f"quality_report_{timestamp}.xlsx"
+            try:
+                generate_excel_report(metrics, excel_path)
+                print(f"Quality report (Excel): {excel_path}")
+            except Exception as e:
+                print(f"Warning: Failed to generate Excel report: {e}")
+                # Fallback to text if Excel fails
+                if report_format == "excel":
+                    report_format = "text"
+        else:
+            print("Warning: openpyxl not available. Install with: pip install openpyxl")
+            # Fallback to text if Excel not available
+            if report_format == "excel":
+                report_format = "text"
+    
+    if report_format in ("text", "both"):
+        text_path = output_dir / f"quality_report_{timestamp}.txt"
+        text_report = generate_text_report(metrics)
+        text_path.write_text(text_report, encoding="utf-8")
+        print(f"Quality report (Text): {text_path}")
+
+
 def run(argv: List[str] | None = None) -> int:
     args = parse_args(argv)
     input_dir: Path = (args.input or default_input_dir()).resolve()
@@ -85,25 +132,80 @@ def run(argv: List[str] | None = None) -> int:
         print("No XML files found to process. Ensure files are placed in the input directory.")
         return 1
 
-    failures = 0
+    # Initialize batch metrics
+    metrics = BatchMetrics()
+    
     for xml_file in targets:
         output_file = output_dir / f"{xml_file.stem}.json"
         print(f"Processing {xml_file.name} -> {output_file.name} (flatten={args.flatten})")
+        
+        timestamp = datetime.now()
+        
+        # Check if file should be skipped (you can add custom skip logic here)
+        if not xml_file.exists():
+            result = ProcessingResult(
+                filename=xml_file.name,
+                status="skipped",
+                timestamp=timestamp,
+                error_message="File does not exist"
+            )
+            metrics.add_result(result)
+            continue
+        
+        # Process the file
         try:
-            convert_xml_to_json(xml_file, output_file, flatten=args.flatten)
-        except ET.ParseError as parse_error:
-            failures += 1
-            print(f"Failed to parse {xml_file.name}: {parse_error}.")
-        except Exception as exc:  # pragma: no cover - defensive guard for unforeseen issues.
-            failures += 1
+            conversion_result = convert_xml_to_json(xml_file, output_file, flatten=args.flatten)
+            
+            if conversion_result.success:
+                if conversion_result.warning_message:
+                    status = "warning"
+                else:
+                    status = "success"
+                
+                result = ProcessingResult(
+                    filename=xml_file.name,
+                    status=status,
+                    timestamp=timestamp,
+                    records_processed=conversion_result.records_processed,
+                    warning_message=conversion_result.warning_message
+                )
+            else:
+                result = ProcessingResult(
+                    filename=xml_file.name,
+                    status="failure",
+                    timestamp=timestamp,
+                    error_message=conversion_result.error_message
+                )
+                print(f"Failed to process {xml_file.name}: {conversion_result.error_message}")
+            
+            metrics.add_result(result)
+            
+        except Exception as exc:
+            result = ProcessingResult(
+                filename=xml_file.name,
+                status="failure",
+                timestamp=timestamp,
+                error_message=f"Unexpected error: {str(exc)}"
+            )
+            metrics.add_result(result)
             print(f"Unexpected error while processing {xml_file.name}: {exc}.")
 
-    successful = len(targets) - failures
+    # Finalize metrics
+    metrics.finalize()
+    
+    # Print summary
     print(
-        f"Completed conversion for {successful} of {len(targets)} file(s). "
-        f"Output directory: {output_dir}"
+        f"\nCompleted conversion for {metrics.total_processed} of {metrics.total_files} file(s). "
+        f"Warnings: {metrics.total_warnings}, Failures: {metrics.total_failures}"
     )
-    return 0 if failures == 0 else 1
+    print(f"Output directory: {output_dir}")
+    
+    # Generate quality report
+    if not args.no_report:
+        print("\nGenerating quality summary report...")
+        generate_quality_report(metrics, output_dir, args.report_format)
+    
+    return 0 if metrics.total_failures == 0 else 1
 
 
 def main() -> None:

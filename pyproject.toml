@@ -5,7 +5,9 @@ description = "Convert HPRA human medicines XML exports into clean JSON."
 authors = [{ name = "HPRA Parser" }]
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "openpyxl>=3.0.0",
+]
 
 [project.scripts]
 hpra-xml-parser = "hpra_parser.cli:main"

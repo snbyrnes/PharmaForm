@@ -1,0 +1,20 @@
+======================================================================
+HPRA Parser - Quality Summary Report
+======================================================================
+
+Batch Information:
+  Start Time: 2025-10-19 18:46:08
+  End Time: 2025-10-19 18:46:08
+  Duration: 0.00 seconds
+
+Processing Counts:
+  Total Files: 1
+  Successfully Processed: 1
+  Skipped: 0
+  Warnings: 0
+  Failures: 0
+  Total Records: 2
+
+Success Rate: 100.00%
+
+======================================================================

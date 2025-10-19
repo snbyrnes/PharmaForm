@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Products xmlns="http://example.com/hpra" exportDate="2025-10-19">
+    <Product>
+        <ProductName>Sample Medicine A</ProductName>
+        <AuthorizationNumber>PA001/001/001</AuthorizationNumber>
+        <ActiveSubstance>Paracetamol</ActiveSubstance>
+        <Strength>500mg</Strength>
+        <PharmaceuticalForm>Tablet</PharmaceuticalForm>
+    </Product>
+    <Product>
+        <ProductName>Sample Medicine B</ProductName>
+        <AuthorizationNumber>PA002/002/002</AuthorizationNumber>
+        <ActiveSubstance>Ibuprofen</ActiveSubstance>
+        <Strength>200mg</Strength>
+        <PharmaceuticalForm>Capsule</PharmaceuticalForm>
+    </Product>
+</Products>
