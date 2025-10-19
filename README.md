@@ -1,4 +1,4 @@
-# HPRA XML Parser HPRA XML Parser
+# PharmaForm - XML to JSON Parser optimised for medicinal product information
 
 
 
