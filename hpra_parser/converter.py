@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from xml.etree import ElementTree as ET
 
+from .integrity import calculate_sha256
+
 
 @dataclass
 class ConversionResult:
@@ -16,6 +18,8 @@ class ConversionResult:
     records_processed: int = 0
     warning_message: Optional[str] = None
     error_message: Optional[str] = None
+    input_sha256: Optional[str] = None
+    output_sha256: Optional[str] = None
 
 
 def strip_namespace(tag: str) -> str:
@@ -129,13 +133,26 @@ def parse_xml(xml_path: Path) -> Dict[str, Any]:
     return {strip_namespace(root.tag): etree_to_dict(root)}
 
 
-def convert_xml_to_json(input_path: Path, output_path: Path, flatten: bool = False) -> ConversionResult:
+def convert_xml_to_json(input_path: Path, output_path: Path, flatten: bool = False, calculate_checksums: bool = True) -> ConversionResult:
     """Convert a HPRA XML file to JSON, optionally flattening the structure.
     
+    Args:
+        input_path: Path to input XML file
+        output_path: Path to output JSON file
+        flatten: If True, flatten the JSON structure
+        calculate_checksums: If True, calculate SHA-256 hashes for integrity verification
+    
     Returns:
-        ConversionResult with success status, record count, and any warnings/errors.
+        ConversionResult with success status, record count, hashes, and any warnings/errors.
     """
+    input_hash = None
+    output_hash = None
+    
     try:
+        # Calculate input file hash before processing
+        if calculate_checksums:
+            input_hash = calculate_sha256(input_path)
+        
         data = parse_xml(input_path)
         records_count = 0
         warning = None
@@ -159,6 +176,10 @@ def convert_xml_to_json(input_path: Path, output_path: Path, flatten: bool = Fal
         
         output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         
+        # Calculate output file hash after writing
+        if calculate_checksums:
+            output_hash = calculate_sha256(output_path)
+        
         # Add warning if no records found
         if records_count == 0:
             warning = "No products found in XML file"
@@ -166,7 +187,9 @@ def convert_xml_to_json(input_path: Path, output_path: Path, flatten: bool = Fal
         return ConversionResult(
             success=True,
             records_processed=records_count,
-            warning_message=warning
+            warning_message=warning,
+            input_sha256=input_hash,
+            output_sha256=output_hash
         )
     except ET.ParseError as e:
         return ConversionResult(

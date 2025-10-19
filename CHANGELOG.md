@@ -2,6 +2,23 @@
 
 All notable changes to the HPRA XML Parser project are documented in this file.
 
+## [0.3.0] - 2025-10-19
+
+### Added
+
+- File integrity verification using SHA-256 checksums
+- Automatic generation of `checksums.csv` with input and output file hashes
+- Command-line option `--no-checksums` to disable checksum generation
+- Hash tracking for audit trails and regulatory compliance
+- File size and timestamp metadata in checksum records
+- Programmatic verification functions in `integrity.py` module
+
+### Changed
+
+- `ConversionResult` now includes `input_sha256` and `output_sha256` fields
+- `convert_xml_to_json()` accepts `calculate_checksums` parameter
+- CLI displays checksum file location and count after processing
+
 ## [0.2.0] - 2025-10-19
 
 ### Added

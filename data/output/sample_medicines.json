@@ -1,18 +1,23 @@
-[
-  {
-    "ProductName": "Sample Medicine A",
-    "AuthorizationNumber": "PA001/001/001",
-    "ActiveSubstance": "Paracetamol",
-    "Strength": "500mg",
-    "PharmaceuticalForm": "Tablet",
-    "Products.attributes.exportDate": "2025-10-19"
-  },
-  {
-    "ProductName": "Sample Medicine B",
-    "AuthorizationNumber": "PA002/002/002",
-    "ActiveSubstance": "Ibuprofen",
-    "Strength": "200mg",
-    "PharmaceuticalForm": "Capsule",
-    "Products.attributes.exportDate": "2025-10-19"
+{
+  "Products": {
+    "attributes": {
+      "exportDate": "2025-10-19"
+    },
+    "Product": [
+      {
+        "ProductName": "Sample Medicine A",
+        "AuthorizationNumber": "PA001/001/001",
+        "ActiveSubstance": "Paracetamol",
+        "Strength": "500mg",
+        "PharmaceuticalForm": "Tablet"
+      },
+      {
+        "ProductName": "Sample Medicine B",
+        "AuthorizationNumber": "PA002/002/002",
+        "ActiveSubstance": "Ibuprofen",
+        "Strength": "200mg",
+        "PharmaceuticalForm": "Capsule"
+      }
+    ]
   }
-]
+}

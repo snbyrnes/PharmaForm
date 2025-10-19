@@ -10,6 +10,7 @@ from typing import List
 from xml.etree import ElementTree as ET
 
 from .converter import convert_xml_to_json
+from .integrity import FileChecksum, write_checksums_csv
 from .quality_report import (
     BatchMetrics,
     ProcessingResult,
@@ -65,6 +66,11 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         choices=["excel", "text", "both"],
         default="excel",
         help="Format for quality summary report (default: excel).",
+    )
+    parser.add_argument(
+        "--no-checksums",
+        action="store_true",
+        help="Disable generation of SHA-256 integrity checksums.",
     )
     parser.add_argument(
         "files",
@@ -132,8 +138,10 @@ def run(argv: List[str] | None = None) -> int:
         print("No XML files found to process. Ensure files are placed in the input directory.")
         return 1
 
-    # Initialize batch metrics
+    # Initialize batch metrics and checksum tracking
     metrics = BatchMetrics()
+    checksums: List[FileChecksum] = []
+    calculate_checksums = not args.no_checksums
     
     for xml_file in targets:
         output_file = output_dir / f"{xml_file.stem}.json"
@@ -141,7 +149,7 @@ def run(argv: List[str] | None = None) -> int:
         
         timestamp = datetime.now()
         
-        # Check if file should be skipped (you can add custom skip logic here)
+        # Check if file should be skipped
         if not xml_file.exists():
             result = ProcessingResult(
                 filename=xml_file.name,
@@ -154,9 +162,35 @@ def run(argv: List[str] | None = None) -> int:
         
         # Process the file
         try:
-            conversion_result = convert_xml_to_json(xml_file, output_file, flatten=args.flatten)
+            conversion_result = convert_xml_to_json(
+                xml_file, 
+                output_file, 
+                flatten=args.flatten,
+                calculate_checksums=calculate_checksums
+            )
             
             if conversion_result.success:
+                # Store checksums if enabled
+                if calculate_checksums and conversion_result.input_sha256:
+                    checksums.append(FileChecksum(
+                        filename=xml_file.name,
+                        file_type="input",
+                        sha256_hash=conversion_result.input_sha256,
+                        file_size=xml_file.stat().st_size,
+                        timestamp=timestamp,
+                        relative_path=xml_file.name
+                    ))
+                    
+                    if conversion_result.output_sha256:
+                        checksums.append(FileChecksum(
+                            filename=output_file.name,
+                            file_type="output",
+                            sha256_hash=conversion_result.output_sha256,
+                            file_size=output_file.stat().st_size,
+                            timestamp=timestamp,
+                            relative_path=output_file.name
+                        ))
+                
                 if conversion_result.warning_message:
                     status = "warning"
                 else:
@@ -199,6 +233,13 @@ def run(argv: List[str] | None = None) -> int:
         f"Warnings: {metrics.total_warnings}, Failures: {metrics.total_failures}"
     )
     print(f"Output directory: {output_dir}")
+    
+    # Generate integrity checksums
+    if calculate_checksums and checksums:
+        checksums_path = output_dir / "checksums.csv"
+        write_checksums_csv(checksums, checksums_path)
+        print(f"\nIntegrity checksums: {checksums_path}")
+        print(f"  Total files hashed: {len(checksums) // 2} pairs (input + output)")
     
     # Generate quality report
     if not args.no_report:
